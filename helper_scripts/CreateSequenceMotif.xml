@@ -1,0 +1,33 @@
+<ROSETTASCRIPTS>
+    <FILTERS>
+    </FILTERS>
+    <RESIDUE_SELECTORS>
+        <Index name="select" resnums="%%start%%" />
+        <Index name="glycan" resnums="%%start%%" />
+        <Neighborhood name="neighbors" resnums="%%start%%" distance="8.0" />
+        <Or name="combined" selectors="glycan,neighbors"/>
+        <Not name="not_neighbors" selector="combined" />
+    </RESIDUE_SELECTORS>
+    <TASKOPERATIONS>
+        <OperateOnResidueSubset name="restrict" selector="not_neighbors" >
+            <PreventRepackingRLT/>
+        </OperateOnResidueSubset>
+    </TASKOPERATIONS>
+    <SIMPLE_METRICS>
+        <PTMPredictionMetric name="glycosylation_prediction" residue_selector="select" modification="NlinkedGlycosylation" />
+    </SIMPLE_METRICS>
+    <MOVERS>
+        <CreateSequenceMotifMover name="motif_creator" residue_selector="glycan" motif="N[-]T" pack_neighbors="1"/>
+        <RunSimpleMetrics name="PTM_prediction" metrics="glycosylation_prediction" />
+        <FastRelax name="relax" scorefxn="REF2015" disable_design="1" task_operations="restrict" >
+                <MoveMap name="rest" bb="false" chi="false">
+                    <ResidueSelector selector="combined" bb="true" chi="true" />
+                    </MoveMap>
+                </FastRelax>
+    </MOVERS>
+    <PROTOCOLS>
+        <Add mover_name="motif_creator"/>
+        <Add mover_name="relax"/>
+        <Add mover_name="PTM_prediction"/>
+    </PROTOCOLS>
+</ROSETTASCRIPTS>

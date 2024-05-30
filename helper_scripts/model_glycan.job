@@ -1,0 +1,94 @@
+#!/bin/bash
+#SBATCH --job-name=GMP_model
+#SBATCH --output=GMP_run.%J
+#SBATCH --time=2-00:00:00
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --mem=8G
+#SBATCH --array=1
+#SBATCH --partition=paul
+#SBATCH --mail-type=TIME_LIMIT_80,END
+
+input_pdb=$1
+PROJECT_NAME=$2
+sugar=$3
+
+reslist_csm='res.txt'
+input="$reslist_csm"
+workdir=$PROJECT_NAME
+DIRECTORY="$workdir/glycans/glycosylate/output"
+
+SING='singularity run /home/sc.uni-leipzig.de/fs642jhoe/docker/rosetta_ml.sif'
+task=$SLURM_ARRAY_TASK_ID
+job=$SLURM_ARRAY_JOB_ID
+
+
+### GLYCOSYLATION ENDED - MODEL_GLYCANS STARTS NOW
+
+
+echo "start Model_Glycans protocol"
+
+
+# Check if there are any .pdb files in the directory
+if [ -z "$(ls -A "$DIRECTORY"/*.pdb 2>/dev/null)" ]; then
+    echo "No .pdb files found in the directory."
+    exit 1
+fi
+
+# Function to create a SLURM job script and submit it
+submit_job() {
+    local file="$1"
+    local start="$2"
+    local job_script=$(mktemp)
+
+    cat <<EOF > "$job_script"
+#!/bin/bash
+#SBATCH --job-name=model_${start}
+#SBATCH --output=model_${start}.out
+#SBATCH --error=model_${start}.err
+#SBATCH --ntasks=1
+#SBATCH --time=2-00:00:00
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --mem=8G
+#SBATCH --array=1
+#SBATCH --partition=paul
+
+
+$SING rosetta_scripts -parser:script_vars start=$start -s "$file" -parser:protocol helper_scripts/Model_Glycan.xml -multiple_processes_writing_to_one_directory -include_sugars -out:path:all "$workdir/glycans/model_glycans/output" -out:suffix _sG_r -beta
+
+EOF
+
+    sbatch "$job_script"
+    rm "$job_script"
+}
+
+export -f submit_job
+
+# Loop through all .pdb files in the directory
+for FILE in "$DIRECTORY"/*.pdb; 
+do
+    # Extract the base name of the file (without the directory part)
+    BASENAME=$(basename "$FILE")
+    
+    # Use regex to extract the three characters after 'mut'
+    if [[ $BASENAME =~ mut(.{3}) ]]; then
+        START=${BASH_REMATCH[1]}
+        echo "Submitting job for file $FILE with start=$START"
+        
+        # Submit the job using sbatch
+        submit_job "$FILE" "$START"
+    else
+        echo "No match for $FILE"
+    fi
+done
+
+echo "All jobs have been submitted."
+
+
+
+
+
+# __author__ = "Franz Dietzmeyer"
+# __contact__ = "franz.dietzmeyer@medizin.uni-leipzig.de"
+# __version__ = "1.5.1"

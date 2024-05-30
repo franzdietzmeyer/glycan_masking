@@ -1,0 +1,22 @@
+<ROSETTASCRIPTS>
+    <SCOREFXNS>
+    </SCOREFXNS>
+    <RESIDUE_SELECTORS>
+        <Index name="select" resnums="%%start%%" />
+    </RESIDUE_SELECTORS>
+    <SIMPLE_METRICS>
+        <TotalEnergyMetric name="total_energy" use_native="0"/>
+        <SasaMetric name="sasa" residue_selector="select" />
+    </SIMPLE_METRICS>
+    <MOVERS>
+        <SimpleGlycosylateMover name="glycosylate" positions="%%start%%" glycosylation="man5" idealize_glycosylation="0" strip_existing="1" />
+        <RunSimpleMetrics name="pre_metrics" metrics="sasa,total_energy" prefix="pre_" />
+        <RunSimpleMetrics name="post_metrics" metrics="sasa,total_energy" prefix="post_" />
+    </MOVERS>
+    <PROTOCOLS>
+        <Add mover="pre_metrics" />
+        <Add mover="glycosylate" />
+        <Add mover="post_metrics"/>
+    </PROTOCOLS>
+</ROSETTASCRIPTS>
+

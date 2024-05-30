@@ -1,0 +1,105 @@
+#!/bin/bash
+#SBATCH --job-name=GMP_glyc
+#SBATCH --output=GMP_run.%J
+#SBATCH --time=2-00:00:00
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --mem=8G
+#SBATCH --array=1
+#SBATCH --partition=paul
+#SBATCH --mail-type=TIME_LIMIT_80,END
+
+input_pdb=$1
+PROJECT_NAME=$2
+sugar=$3
+
+reslist_csm='res.txt'
+input="$reslist_csm"
+workdir=$PROJECT_NAME
+SING='singularity run /home/sc.uni-leipzig.de/fs642jhoe/docker/rosetta_ml.sif'
+task=$SLURM_ARRAY_TASK_ID
+job=$SLURM_ARRAY_JOB_ID
+
+
+DIRECTORY="$workdir/results/pdbs"
+
+
+for FILE in "$DIRECTORY"/*.pdb; 
+do
+    BASENAME=$(basename "$FILE")
+
+    if [[ $BASENAME =~ (mut.{3}) ]]; then
+        NEWNAME="${PROJECT_NAME}_${BASH_REMATCH[1]}.pdb"
+
+        mv "$FILE" "$DIRECTORY/$NEWNAME"
+        echo "Renamed $FILE to $DIRECTORY/$NEWNAME"
+
+    else 
+        echo 'No match for $FILE'
+
+    fi
+done
+
+#create new res_list for glycosylation
+OUTPUT_FILE='res_glyc.list'
+
+> "$OUTPUT_FILE"
+
+# Loop through all .pdb files in the directory
+for FILE in "$DIRECTORY"/*.pdb; 
+do
+    # Extract the base name of the file (without the directory part)
+    BASENAME=$(basename "$FILE")
+    
+    # Use regex to extract the 'mut' part and the next 3 characters
+    if [[ $BASENAME =~ mut(.{3}) ]]; then
+        # Check if the extracted part is "0wt" and skip it if so
+        if [[ ${BASH_REMATCH[1]} == "0wt" ]]; then
+            continue
+        fi
+        
+        # Append the matched characters to the output file
+        echo "${BASH_REMATCH[1]}" >> "$OUTPUT_FILE"
+    else
+        echo "No match for $FILE"
+    fi
+done
+
+
+
+
+echo "start glycosylation protocol"
+
+
+input_glyc="res_glyc.list"
+
+while IFS= read -r line || [[ -n $line ]]; do
+# Debugging: print the current line being processed
+echo "Processing line: $line"
+
+# Execute the command with the current line
+$SING rosetta_scripts \
+    -in:file:s $workdir/results/pdbs/${PROJECT_NAME}_mut${line:0:3}.pdb\
+    -parser:protocol helper_scripts/Glycosylate.xml \
+    -parser:script_vars start=${line:0:3} \
+    -multiple_processes_writing_to_one_directory \
+    -out:path:all $workdir/glycans/glycosylate/output \
+    -out:suffix _sG \
+    -beta \
+    -include_sugars
+
+done < "$input_glyc"
+
+
+if [ $? -eq 0 ]; then
+    echo "Glycosylation performed successfully"
+else
+    echo "Error: Glycosylation failed successfully."
+    exit 1
+fi
+
+
+
+# __author__ = "Franz Dietzmeyer"
+# __contact__ = "franz.dietzmeyer@medizin.uni-leipzig.de"
+# __version__ = "1.5.1"

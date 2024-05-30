@@ -1,0 +1,84 @@
+#!/bin/bash
+#SBATCH --job-name=GMP_analyze
+#SBATCH --output=GMP_run.%J
+#SBATCH --time=2-00:00:00
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --mem=8G
+#SBATCH --array=1
+#SBATCH --partition=paul
+#SBATCH --mail-type=TIME_LIMIT_80,END
+
+input_pdb=$1
+PROJECT_NAME=$2
+sugar=$3
+
+reslist_csm='res.txt'
+input="$reslist_csm"
+workdir=$PROJECT_NAME
+
+python3 helper_scripts/scorefilemerger3.py "$workdir" "$workdir"
+
+
+
+###remove every .pdb file except the ones with the best total_score after FastRelax
+
+##remove every .pdb file except the ones with the best total_score after FastRelax
+sorted_score_file="$workdir/results/scores/final_scores_GM.csv"
+
+# Read the second column of the sorted_score_FR.sc file into a list and add '.pdb' to each entry
+file_list=$(awk -F',' 'NR>1 {print $2 ".pdb"}' "$sorted_score_file")
+
+# Print the list to input.txt
+echo "$file_list" > delete.txt
+
+# Path to the merged_scores.csv file
+if [ ! -f delete.txt ]; then
+    echo "Error: input file not found."
+    exit 1
+fi
+#Create a temporary file to store filenames from input.csv
+tmp_file=$(mktemp)
+
+# Extract filenames from input.csv and store them in the temporary file
+cut -d',' -f1 delete.txt > "$tmp_file"
+
+# Loop through each file in the PDB folder
+cd $workdir/fastrelaxes/fr_csm || exit
+for file in *; do
+    # Extract filename from path
+    filename=$(basename "$file")
+    
+    # Check if filename exists in the temporary file
+    if grep -Fxq "$filename" "$tmp_file"; then
+        echo "$filename found in delete.txt. Keeping..."
+    else
+        echo "$filename not found in delete.txt. Deleting..."
+        rm "$file"
+    fi
+done
+
+# Remove the temporary file
+rm "$tmp_file"
+
+echo "Deletion complete."
+#copy final files into results directory
+cd ../../../
+
+
+cp "$workdir/fastrelaxes/fr_csm/"*.pdb "$workdir/results/pdbs"
+cp "$workdir/results/pdbs/"*.pdb "$workdir/glycans/glycosylate/input"
+
+
+
+python3 helper_scripts/plot_results.py "$workdir"
+
+### CSM ENDED - GLYCOSYLATION STARTS NOW
+
+
+
+
+
+# __author__ = "Franz Dietzmeyer"
+# __contact__ = "franz.dietzmeyer@medizin.uni-leipzig.de"
+# __version__ = "1.5.1"

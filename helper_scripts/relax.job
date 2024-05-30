@@ -1,0 +1,63 @@
+#!/bin/bash
+#SBATCH --job-name=GMP_relax
+#SBATCH --output=GMP_run.%J
+#SBATCH --time=2-00:00:00
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --mem=8G
+#SBATCH --array=1-10
+#SBATCH --partition=paul
+#SBATCH --mail-type=TIME_LIMIT_80,END
+
+input_pdb=$1
+PROJECT_NAME=$2
+sugar=$3
+
+reslist_csm='res.txt'
+input="$reslist_csm"
+workdir=$PROJECT_NAME
+
+
+##define path needed
+SING='singularity run /home/sc.uni-leipzig.de/fs642jhoe/docker/rosetta_ml.sif'
+task=$SLURM_ARRAY_TASK_ID
+job=$SLURM_ARRAY_JOB_ID
+
+
+module purge
+module load Anaconda3
+source /software/all/Anaconda3/2021.11/etc/profile.d/conda.sh
+conda deactivate
+
+conda activate /home/sc.uni-leipzig.de/fs642jhoe/.conda/envs/glycanmasking
+
+
+
+job=$SLURM_ARRAY_JOB_ID
+task=$SLURM_ARRAY_TASK_ID
+
+ls $workdir/csm/output/*.pdb > input.list
+
+
+$SING relax \
+    -l input.list \
+    -nstruct 1 \
+    -ignore_unrecognized_res \
+    -constrain_relax_to_start_coords \
+    -relax:ramp_constraints false \
+    -multiple_processes_writing_to_one_directory \
+    -out:prefix r_${task}_ \
+    -out:path:all $workdir/fastrelaxes/fr_csm
+
+
+if [ $? -eq 0 ]; then
+    echo "FastRelax performed successfully"
+else
+    echo "Error: Rosetta relax command failed."
+    exit 1
+fi
+
+
+# __author__ = "Franz Dietzmeyer"
+# __contact__ = "franz.dietzmeyer@medizin.uni-leipzig.de"
+# __version__ = "1.5.1"

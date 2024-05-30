@@ -1,0 +1,85 @@
+#!/bin/bash
+#SBATCH --job-name=GMP_csm
+#SBATCH --output=GMP_run.%J
+#SBATCH --time=2-00:00:00
+#SBATCH --ntasks=1
+#SBATCH --nodes=1
+#SBATCH --mem=8G
+#SBATCH --array=1
+#SBATCH --partition=paul
+#SBATCH --mail-type=TIME_LIMIT_80,END
+
+PROJECT_ARRAY=${PROJECT_NAME}_${SLURM_ARRAY_TASK_ID}
+echo "Thank you for using the GlycanMasking Pipepline! The project ID is: $PROJECT_ARRAY"
+
+##define path needed
+SING='singularity run /home/sc.uni-leipzig.de/fs642jhoe/docker/rosetta_ml.sif'
+task=$SLURM_ARRAY_TASK_ID
+job=$SLURM_ARRAY_JOB_ID
+
+input_pdb=$1
+PROJECT_NAME=$2
+sugar=$3
+
+
+reslist_csm='res.txt'
+input="$reslist_csm"
+workdir=$PROJECT_NAME
+
+echo "start CreateSequenceMotif protocol"
+
+
+
+while IFS= read -r line || [[ -n $line ]]; do
+# Debugging: print the current line being processed
+echo "Processing line: $line"
+
+# Execute the command with the current line
+$SING rosetta_scripts \
+    -in:file:s "$input_pdb" \
+    -parser:protocol helper_scripts/CreateSequenceMotif.xml \
+    -parser:script_vars start=${line:0:3} \
+    -multiple_processes_writing_to_one_directory \
+    -out:path:all "$workdir/csm/output" \
+    -out:suffix _mut${line:0:3} \
+    -beta
+
+done < "$input"
+
+
+
+# Path to the output directory
+output_dir="$workdir/csm/output"
+
+# Get the filename from the input directory
+filename=$(basename "$input_pdb")
+
+# Copy the file to the output directory
+cp "$filename" "$output_dir/"
+
+# Extract filename without extension
+filename_no_ext=$(basename "$filename" .pdb)
+
+# Construct new filename with suffix
+new_filename="${filename_no_ext}_mut0wt.pdb"
+
+# Rename the file in the output directory
+mv "$output_dir/$filename" "$output_dir/$new_filename"
+
+
+
+
+
+
+if [ $? -eq 0 ]; then
+    echo "CreateSequenceMotif performed successfully"
+else
+    echo "Error: CreateSequenceMotif failed successfully."
+    exit 1
+fi
+
+
+
+# __author__ = "Franz Dietzmeyer"
+# __contact__ = "franz.dietzmeyer@medizin.uni-leipzig.de"
+# __version__ = "1.5.1"
