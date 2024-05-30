@@ -2,7 +2,40 @@
 # GLYCAN MASKING PIPELINE
 
 With this pipeline you should be able to perfom glycan masking in vaccine development using rosetta suite.
-
+                                      
+                                      
+                                      
+          ┌───────────────┐           
+          │ prepare input │           
+          │      pdb      │           
+          └───────┬───────┘           
+                  │                   
+                  │                   
+       ┌──────────▼──────────┐        
+       │ CreateSequenceMotif │        
+       └──────────┬──────────┘        
+                  │                   
+                  │                   
+         ┌────────▼────────┐          
+         │  PTM Prediction │          
+         └────────┬────────┘          
+                  │                   
+                  │                   
+      ┌───────────▼───────────┐       
+      │ FastRelax & Filtering │       
+      └───────────┬───────────┘       
+                  │                   
+                  │                   
+            ┌─────▼─────┐             
+            │Glycosylate│             
+            └─────┬─────┘             
+                  │                   
+                  │                   
+           ┌──────▼──────┐            
+           │Model_Glycans│            
+           └─────────────┘            
+                                      
+                                      
 
 
 ## Authors
