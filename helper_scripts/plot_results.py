@@ -3,6 +3,11 @@ import matplotlib.pyplot as plt
 import sys
 import os
 
+# Assuming input_dir is provided as a command line argumentimport pandas as pd
+import matplotlib.pyplot as plt
+import sys
+import os
+
 # Assuming input_dir is provided as a command line argument
 #input_dir = sys.argv[1]
 output=sys.argv[1]
@@ -14,7 +19,11 @@ mut0wt_value = df.loc[df['mut_group'] == 'mut0wt', 'total_score'].values[0]
 
 # Plot PTM against total_score
 plt.figure(figsize=(10, 6))
-plt.scatter(df['PTM'], df['total_score'])
+
+# Define colors based on conditions
+colors = ['green' if (row['total_score'] < mut0wt_value and row['PTM'] > 0.6) else 'darkblue' for _, row in df.iterrows()]
+
+plt.scatter(df['PTM'], df['total_score'], c=colors)
 
 # Add labels and title
 plt.xlabel('PTMMetric score')
@@ -26,10 +35,10 @@ for i, txt in enumerate(df['mut_group']):
     plt.annotate(txt, (df['PTM'][i], df['total_score'][i]), textcoords="offset points", xytext=(0,10), ha='center')
 
 # Draw horizontal line at the y-value of 'mut0wt'
-plt.axhline(y=mut0wt_value, color='r', linestyle='--', label='mut0wt')
+plt.axhline(y=mut0wt_value, color='grey', linestyle='--', label='mut0wt')
 
 # Draw vertical line at x=0.6
-plt.axvline(x=0.6, color='b', linestyle='--', label='x=0.6')
+plt.axvline(x=0.6, color='grey', linestyle='--', label='x=0.6')
 
 plt.xlim(0, 1)
 
@@ -43,9 +52,7 @@ plt.savefig(f'{output}/results/results_csm_plot.png')
 # Display plot
 #plt.show()
 
-
-print('results plotted succsessfully')
-
+print('results plotted successfully')
 
 
 
@@ -75,7 +82,7 @@ mut0wt_value = df2.loc[df2['mut_group'] == 'mut0wt', 'score_difference'].values[
 
 # Plot PTM against total_score
 plt.figure(figsize=(10, 6))
-plt.scatter(df2['PTM'], df2['score_difference'])
+plt.scatter(df2['PTM'], df2['score_difference'], color='g')
 
 # Annotate points with 'mut_group' name
 for i, txt in enumerate(df2['mut_group']):
