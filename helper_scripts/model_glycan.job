@@ -44,8 +44,6 @@ submit_job() {
     cat <<EOF > "$job_script"
 #!/bin/bash
 #SBATCH --job-name=model_${start}
-#SBATCH --output=model_${start}.out
-#SBATCH --error=model_${start}.err
 #SBATCH --ntasks=1
 #SBATCH --time=2-00:00:00
 #SBATCH --ntasks=1
